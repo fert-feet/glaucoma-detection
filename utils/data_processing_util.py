@@ -1,12 +1,8 @@
 import os
-import csv
 import numpy as np
 from PIL import Image
-import torch
 import glob
-import torchvision
 from torchvision import transforms
-from torchvision.models import resnet18
 from tqdm import tqdm
 import pandas as pd
 
@@ -14,8 +10,8 @@ def processing(folder_path):
     processed_data_list = []
     file_name_label_list = []
 
-    files = glob.glob(os.path.join(folder_path, '*.png'))
-    for file in tqdm(files):
+    files = glob.glob(os.path.join(folder_path, '*.jpeg'))
+    for file in tqdm(files, desc='Processing'):
         file_name_label_list.append(extract_file_information(file))
         processed_data = data_processing(file)
         processed_data_list.append(processed_data)
@@ -29,9 +25,10 @@ def processing(folder_path):
 
 def data_processing(image_path):
     transform = transforms.Compose([
+        transforms.Grayscale(1), # 单通道
         transforms.Resize((224, 224)),  # ResNet18通常要求输入图像大小为224x224
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        transforms.Normalize([0.485, ], [0.229, ])
         ])
 
     image = Image.open(image_path)
@@ -40,15 +37,15 @@ def data_processing(image_path):
 
 def extract_file_information(file_path):
     file_name = file_path.split('/')[-1].split('.')[0]
-    file_label = file_name.split('_')[0]
+    file_label = file_name.split('_')[1]
 
     return list((file_name, file_label))
 
 if __name__ == '__main__':
-    train_folder_path = "../../origin-data/train"
-    test_folder_path = "../../origin-data/test"
+    train_folder_path = "../../origin-data/pneumonia/train"
+    test_folder_path = "../../origin-data/pneumonia/test"
 
-    processed_data_path = "../../processed-data"
+    processed_data_path = "../../processed-data/pneumonia"
     category_list = ["normal", "cataract", "glaucoma", "retina_disease"]
 
     train_data, train_label = processing(train_folder_path)
