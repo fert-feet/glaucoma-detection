@@ -1,77 +1,93 @@
 import torch
-from torch.utils.data import Dataset, DataLoader
-from utils.dataloader import EyeDateSet
-from torch import nn
-from model.base_model import BaseModel
-from matplotlib import pyplot as plt
-import config
+import torch.nn as nn
 
-def evaluate(model, train_loader, criterion, device):
-    model.eval()
-    total_loss = 0.0
-    correct = 0
+from utils.dataloader import get_data_loaders
+from utils.drawer import Plotter
+from tqdm import tqdm
+from model.base_model import BaseModelResNet18, SmallCNN
+import matplotlib.pyplot as plt
 
-    with torch.no_grad():
-        for inputs, targets in train_loader:
-            inputs, targets = inputs.to(device), targets.to(device).to(torch.float32)
+# 定义数据路径
+train_data_path = "../processed-data/pneumonia/train.npy"
+test_data_path = "../processed-data/pneumonia/test.npy"
+train_label_path = "../processed-data/pneumonia/train.csv"
+test_label_path = "../processed-data/pneumonia/test.csv"
 
-            outputs = model(inputs)
-            loss = criterion(outputs, targets)
+# 训练和评估
+num_epochs = 50
+train_loss_list, train_acc_list = [], []
+test_loss_list, test_acc_list = [], []
+batch_size = 32
 
-            total_loss += loss.item() * inputs.size(0)
-            _, preds = torch.max(outputs, 1)
-            correct += torch.sum(preds == targets)
+# 获取数据加载器
+train_loader, test_loader = get_data_loaders(train_data_path, train_label_path, test_data_path, test_label_path, batch_size)
 
-    epoch_loss = total_loss / len(train_loader.dataset)
-    epoch_acc = correct.double() / len(train_loader.dataset)
-    return epoch_loss, epoch_acc
+# 定义设备
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def train_epoch(model, train_loader, criterion, optimizer, device, scheduler):
+# 定义模型
+base_model = SmallCNN(num_classes=2).to(device)
+
+# 定义损失函数和优化器
+criterion = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(base_model.parameters(), 1e-3)
+# optimizer = torch.optim.Adam(base_model.parameters(), 1e-4, betas=(0.9, 0.999), weight_decay=0.0003)
+# scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
+
+# 训练函数
+def epoch_train(model, train_loader, criterion, optimizer, device):
     model.train()
-    total_loss = 0
+    running_loss = 0.0
     correct = 0
-
-    for X, y in train_loader:
-        data, targets = X.to(device), y.to(device).to(torch.float32)
-        outputs = model(data)
-
-        loss = criterion(outputs, targets)
-        total_loss += loss.item() * data.size(0)
-        _, preds = torch.max(outputs, 1)
-        correct += torch.sum(preds == targets)
-        print(outputs.shape, targets.shape, preds.shape)
-
+    total = 0
+    for images, labels in train_loader:
+        images, labels = images.to(device), labels.to(device)
         optimizer.zero_grad()
+        outputs = model(images)
+        loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
-        scheduler.step()
+        running_loss += loss.item()
+        _, predicted = torch.max(outputs.data, 1)
+        total += labels.size(0)
+        correct += (predicted == labels).sum().item()
+    train_loss = running_loss / len(train_loader)
+    train_acc = 100 * correct / total
+    return train_loss, train_acc
 
-    return total_loss / len(train_loader.dataset)
+# 评估函数
+def evaluate(model, test_loader, criterion, device):
+    model.eval()
+    running_loss = 0.0
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        for images, labels in test_loader:
+            images, labels = images.to(device), labels.to(device)
+            outputs = model(images)
+            loss = criterion(outputs, labels)
+            running_loss += loss.item()
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+    test_loss = running_loss / len(test_loader)
+    test_acc = 100 * correct / total
+    return test_loss, test_acc
 
-if __name__ == '__main__':
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    train_data_path = "../processed-data/train.npy"
-    test_data_path = "../processed-data/test.npy"
-    train_label_path = "../processed-data/train.csv"
-    test_label_path = "../processed-data/test.csv"
+for epoch in tqdm(range(num_epochs), desc='Epoch'):
+    train_loss, train_acc = epoch_train(base_model, train_loader, criterion, optimizer, device)
+    test_loss, test_acc = evaluate(base_model, test_loader, criterion, device)
+    train_loss_list.append(train_loss)
+    train_acc_list.append(train_acc)
+    test_loss_list.append(test_loss)
+    test_acc_list.append(test_acc)
+    print(f'Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.2f}%')
+    print(f'Test Loss: {test_loss:.4f}, Test Acc: {test_acc:.2f}%')
+    # scheduler.step(test_loss)
 
-    train_dataset = EyeDateSet(train_label_path, train_data_path)
-    test_dataset = EyeDateSet(test_label_path, test_data_path)
-    train_loader = DataLoader(train_dataset, batch_size=config.BATCH_SIZE, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=config.BATCH_SIZE, shuffle=True)
 
-    base_model = BaseModel(num_classes=4).to(device)
-    loss_fn = nn.CrossEntropyLoss()
-    optimizer = torch.optim.AdamW(params=base_model.parameters(), lr=1e-4, weight_decay=1e-5)
-    num_epoch = config.NUM_EPOCH
+torch.save(base_model.state_dict(), f'./logs/model/pneumonia_mode_{base_model.get_name()}_acc_{test_acc_list[-1]}.pth')
 
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_max=num_epoch*config.BATCH_SIZE)
-
-    train_loss_list = []
-    fig, ax = plt.subplots()
-    for epoch in range(num_epoch):
-        epoch_loss = train_epoch(base_model, train_loader, loss_fn, optimizer, device, scheduler)
-        train_loss_list.append(epoch_loss)
-        ax.plot(train_loss_list, label='train loss')
-        fig.show()
+draw_tool = Plotter(save_path='./logs/image')
+draw_tool.plot_loss_and_accuracy(train_loss_list, test_loss_list, train_acc_list, test_acc_list)
