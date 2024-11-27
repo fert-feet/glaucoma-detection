@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import torch
 from PIL import Image
 import glob
 from torchvision import transforms
@@ -25,13 +26,12 @@ def processing(folder_path):
 
 def data_processing(image_path):
     transform = transforms.Compose([
-        transforms.Grayscale(1), # 单通道
         transforms.Resize((224, 224)),  # ResNet18通常要求输入图像大小为224x224
         transforms.ToTensor(),
-        transforms.Normalize([0.485, ], [0.229, ])
+        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
         ])
 
-    image = Image.open(image_path)
+    image = Image.open(image_path).convert('RGB')
     image = transform(image)
     return image
 

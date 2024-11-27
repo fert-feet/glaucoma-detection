@@ -36,7 +36,7 @@ for category_folder in category_folders:
     # 获取当前类别文件夹下的所有图片文件列表
     category_folder_path = os.path.join(data_relative_path, category_folder)
     image_files = [f for f in os.listdir(category_folder_path) if f.endswith('.jpeg')]
-    random.shuffle(image_files)  # 随机打乱图片文件顺序
+    # random.shuffle(image_files)  # 随机打乱图片文件顺序
 
     # 划分训练集和测试集
     num_images = len(image_files)

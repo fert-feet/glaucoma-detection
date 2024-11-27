@@ -1,5 +1,7 @@
 from torchvision import models
 from torch import nn
+import torch.nn.functional as F
+from torchsummary import summary
 import torch
 
 class BaseModelResNet18(nn.Module):
@@ -8,38 +10,45 @@ class BaseModelResNet18(nn.Module):
         self.model = models.resnet18(pretrained=False)
         self.pretrained_model_path = "./model/pre_trained_model/resnet/resnet18-5c106cde.pth"
         self.num_classes = num_classes
-        self.model.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
-
-        if pretrained:
-            pretrained_model = torch.load(self.pretrained_model_path)
-            self.model.load_state_dict(pretrained_model)
-
+        pretrained_model = torch.load(self.pretrained_model_path)
+        self.model.load_state_dict(pretrained_model)
         num_feature = self.model.fc.in_features
         self.model.fc = nn.Linear(num_feature, self.num_classes)
+        self.name = "resnet18"
 
     def forward(self, x):
         return self.model(x)
 
+    def get_name(self):
+        return self.name
+
 class SmallCNN(nn.Module):
-    def __init__(self, num_classes=4):
+    def __init__(self, num_classes):
         super(SmallCNN, self).__init__()
         self.features = nn.Sequential(
-            nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(3, 32, kernel_size=(3, 3)),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2, stride=2),
-            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(32, 64, kernel_size=(3, 3)),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2, stride=2),
         )
         self.classifier = nn.Sequential(
-            nn.Linear(64 * 56 * 56, 128),
+            nn.Linear(64 * 54 * 54, 128),
             nn.ReLU(inplace=True),
             nn.Dropout(0.5),
             nn.Linear(128, num_classes),
         )
+        self.name = "cnn"
 
     def forward(self, x):
         x = self.features(x)
         x = torch.flatten(x, 1)
         x = self.classifier(x)
         return x
+
+    def get_name(self):
+        return self.name
+
+
+# summary(SmallCNN().to('cuda'), torch.randn(3, 224, 224))
