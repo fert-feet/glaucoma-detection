@@ -51,4 +51,5 @@ class SmallCNN(nn.Module):
         return self.name
 
 
-# summary(SmallCNN().to('cuda'), torch.randn(3, 224, 224))
+# model = SmallCNN(num_classes=2).to('cuda')
+# summary(model, torch.randn(1, 3, 224, 224).to('cuda'))

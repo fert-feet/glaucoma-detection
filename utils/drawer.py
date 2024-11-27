@@ -104,8 +104,25 @@ class Plotter:
         fig.show()
         fig.savefig(os.path.join(self.save_path, "aug_train_img.png"))
 
-    # def show_layer_output_img(self, pth_file):
-    #     model = SmallCNN(num_classes=2).to('cuda')
-    #     model.load_state_dict(torch.load(pth_file))
-    #
-    #     target_layer = model.conv1
+    def show_layer_output_img(self, pth_file):
+        model = SmallCNN(num_classes=2).to('cuda')
+        model.load_state_dict(torch.load(pth_file))
+
+        target_layer = model.features[0]
+        hook_handle = target_layer.register_forward_hook(hook_fn)
+        data = np.load("../processed-data/pneumonia/test.npy")[0]
+        data = torch.from_numpy(np.expand_dims(data, axis=0)).to('cuda')
+        output = model(data)
+        target_layer_output = hook_fn.target_layer_output
+        print(target_layer_output.shape)
+        hook_handle.remove()
+
+def random_int(start, end):
+    return np.random.randint(start, end)
+
+# 定义一个 hook 函数
+def hook_fn(module, input, output):
+    # 保存第一个卷积层的输出
+    hook_fn.first_conv_output = output
+
+
