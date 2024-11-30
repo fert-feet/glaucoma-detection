@@ -26,7 +26,7 @@ def processing(folder_path):
 
 def data_processing(image_path):
     transform = transforms.Compose([
-        transforms.Resize((224, 224)),  # ResNet18通常要求输入图像大小为224x224
+        transforms.Resize((224, 224)),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
         ])

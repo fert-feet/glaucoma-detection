@@ -63,7 +63,7 @@ def epoch_train(model, train_loader, criterion, optimizer, device):
         all_predictions.extend(predicted.cpu().numpy())
 
     train_loss = running_loss / len(train_loader)
-    train_acc = 100 * correct / (total + 500)
+    train_acc = 100 * correct / total
     train_f1 = f1_score(all_labels, all_predictions, average='weighted')  # 计算 F1 分数
 
     return train_loss, train_acc, train_f1
@@ -92,7 +92,7 @@ def evaluate(model, test_loader, criterion, device):
             all_predictions.extend(predicted.cpu().numpy())
 
     test_loss = running_loss / len(test_loader)
-    test_acc = 100 * correct / (total + 500)
+    test_acc = 100 * correct / total
     test_f1 = f1_score(all_labels, all_predictions, average='weighted')  # 计算 F1 分数
 
     return test_loss, test_acc, test_f1

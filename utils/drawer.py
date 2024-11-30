@@ -16,27 +16,55 @@ class Plotter:
         self.fig_size = fig_size
 
     def plot_loss_and_accuracy(self, train_loss_list, test_loss_list, train_acc_list, test_acc_list):
+        """
+        绘制loss和acc曲线
+        :param train_loss_list:
+        :param test_loss_list:
+        :param train_acc_list:
+        :param test_acc_list:
+        :return:
+        """
         plt.figure(figsize=self.fig_size)
-
         # 绘制损失曲线
         plt.subplot(2, 1, 1)
         plt.plot(train_loss_list, label='Train Loss', color='blue', linestyle='-')
         plt.plot(test_loss_list, label='Test Loss', color='red', linestyle='--')
+        plt.fill_between(range(len(train_loss_list)), train_loss_list, color='blue', alpha=0.3)
+        plt.fill_between(range(len(test_loss_list)), test_loss_list, color='red', alpha=0.3)
         plt.title('Training and Test Loss')
         plt.xlabel('Epoch')
         plt.ylabel('Loss')
         plt.grid(True, linestyle='--', alpha=0.7)
         plt.legend(loc='upper right')
 
+        # 显示最后一点的数值
+        last_train_loss = train_loss_list[-1]
+        last_test_loss = test_loss_list[-1]
+        plt.annotate(f'{last_train_loss:.4f}', xy=(len(train_loss_list) - 1, last_train_loss), xytext=(10, -10),
+                     textcoords='offset points', color='blue')
+        plt.annotate(f'{last_test_loss:.4f}', xy=(len(test_loss_list) - 1, last_test_loss), xytext=(10, -10),
+                     textcoords='offset points', color='red')
+
         # 绘制准确率曲线
         plt.subplot(2, 1, 2)
         plt.plot(train_acc_list, label='Train Accuracy', color='green', linestyle='-')
         plt.plot(test_acc_list, label='Test Accuracy', color='orange', linestyle='--')
+        plt.fill_between(range(len(train_acc_list)), train_acc_list, color='green', alpha=0.3)
+        plt.fill_between(range(len(test_acc_list)), test_acc_list, color='orange', alpha=0.3)
         plt.title('Training and Test Accuracy')
         plt.xlabel('Epoch')
         plt.ylabel('Accuracy (%)')
+        plt.ylim(0, 100)  # 设置y轴范围从0到100
         plt.grid(True, linestyle='--', alpha=0.7)
         plt.legend(loc='lower right')
+
+        # 显示最后一点的数值
+        last_train_acc = train_acc_list[-1]
+        last_test_acc = test_acc_list[-1]
+        plt.annotate(f'{last_train_acc:.2f}%', xy=(len(train_acc_list) - 1, last_train_acc), xytext=(10, -10),
+                     textcoords='offset points', color='green')
+        plt.annotate(f'{last_test_acc:.2f}%', xy=(len(test_acc_list) - 1, last_test_acc), xytext=(10, -10),
+                     textcoords='offset points', color='orange')
 
         plt.tight_layout()  # 调整子图布局，避免重叠
 
